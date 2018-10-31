@@ -1,0 +1,252 @@
+---
+title: "Loop Function And Debugging"
+author: "Rohit Jain"
+date: "10/30/2018"
+output: ioslides_presentation
+---
+
+## Objective
+
+- Define an anonymous function 
+- Describe "loop functions" in R: lapply, apply, tapply, split, mapply
+- Describe how to start the R debugger for an arbitrary R function
+- Describe what the traceback() function does and what is the function call stack
+
+## Anonymous Functions
+
+In R, functions are objects in their own right. They aren’t automatically bound to a name. Unlike many languages (e.g., C, C++, Python, and Ruby), R doesn’t have a special syntax for creating a named function: when you create a function, you use the regular assignment operator to give it a name. If you choose not to give the function a name, you get an anonymous function.
+
+
+## Loop Functions
+
+- lapply(): Loop over a list and evaluate a function on each element
+- sapply(): Same as lapply but try to simplify the result
+- apply(): Apply a function over the margins of an array
+- tapply(): Apply a function over subsets of a vector
+- mapply(): Multivariate version of lapply
+
+An auxiliary function split is also useful, particularly in conjunction with lapply
+
+## lapply:
+
+The lapply() function does the following simple series of operations:
+
+1. it loops over a list, iterating over each element in that list
+2. it applies a function to each element of the list (a function that you specify)
+3. and returns a list (the l is for “list”).
+
+This function takes three arguments: (1) a list X; (2) a function (or the name of a function) FUN; (3) other arguments via its ... argument. If X is not a list, it will be coerced to a list using as.list().
+
+*** 
+
+### Example
+
+It’s important to remember that lapply() always returns a list, regardless of the class of the input.
+Here’s an example of applying the mean() function to all elements of a list. If the original list has names, the the names will be preserved in the output.
+```{r lapply}
+x <- list(a = 1:5, b = rnorm(10))
+lapply(x, mean)
+```
+
+*** 
+
+### Try
+
+```{r,eval=FALSE}
+x <- 1:4
+lapply(x, runif)
+x <- list(a = matrix(1:4, 2, 2), b = matrix(1:6, 3, 2)) 
+lapply(x, function(elt) { elt[,1] })
+f <- function(elt) {
+        elt[, 1]
+}
+lapply(x, f)
+```
+
+
+## sapply
+
+The sapply() function behaves similarly to lapply(); the only real difference is in the return value. sapply() will try to simplify the result of lapply() if possible. Essentially, sapply() calls lapply() on its input and then applies the following algorithm:
+
+- If the result is a list where every element is length 1, then a vector is returned
+- If the result is a list where every element is a vector of the same length (> 1), a matrix is returned.
+- If it can’t figure things out, a list is returned
+
+*** 
+
+### Examples
+
+```{r sapply}
+x <- list(a = 1:4, b = rnorm(10))
+lapply(x, mean)
+sapply(x, mean)
+```
+
+## apply
+
+The apply() function is used to a evaluate a function (often an anonymous one) over the margins of an array. It is most often used to apply a function to the rows or columns of a matrix (which is just a 2-dimensional array). However, it can be used with general arrays, for example, to take the average of an array of matrices. Using apply() is not really faster than writing a loop, but it works in one line and is highly compact.
+
+*** 
+
+```{r}
+str(apply)
+```
+The arguments to apply() are
+
+- X is an array
+- MARGIN is an integer vector indicating which margins should be “retained”.
+- FUN is a function to be applied
+- ... is for other arguments to be passed to FUN
+
+*** 
+
+### Example
+
+```{r apply}
+x <- matrix(rnorm(200), 20, 10)
+apply(x, 2, mean)
+```
+```{r, eval=FALSE}
+apply(x, 1, sum)
+```
+
+
+## split
+
+The split() function takes a vector or other objects and splits it into groups determined by a factor or list of factors.
+
+The arguments to split() are
+
+```{r split}
+str(split)
+```
+
+where
+
+- x is a vector (or list) or data frame
+- f is a factor (or coerced to one) or a list of factors
+- drop indicates whether empty factors levels should be dropped
+
+*** 
+### Example of split
+
+```{r}
+x <- c(rnorm(10), runif(10))
+f <- gl(2, 10)
+split(x, f)
+```
+
+## tapply
+
+tapply() is used to apply a function over subsets of a vector. It can be thought of as a combination of split() and sapply() for vectors only. I’ve been told that the “t” in tapply() refers to “table”, but that is unconfirmed.
+
+```{r }
+str(tapply)
+```
+
+The arguments to tapply() are as follows:
+- X is a vector
+- INDEX is a factor or a list of factors (or else they are coerced to factors)
+- FUN is a function to be applied
+- … contains other arguments to be passed FUN
+- simplify, should we simplify the result?
+
+*** 
+
+### tapply Examples
+
+```{r tapply}
+x <- c(rnorm(10), runif(10), rnorm(10, 1))
+f <- gl(3, 10)   
+f
+tapply(x, f, mean)
+```
+***
+ 
+```{r} 
+tapply(x, f, mean, simplify = FALSE)
+```
+
+## mapply
+
+The mapply() function is a multivariate apply of sorts which applies a function in parallel over a set of arguments. Recall that lapply() and friends only iterate over a single R object. What if you want to iterate over multiple R objects in parallel? This is what mapply() is for.
+
+```{r}
+str(mapply)
+```
+
+The arguments to mapply() are
+- FUN is a function to apply
+- ... contains R objects to apply over
+- MoreArgs is a list of other arguments to FUN.
+- SIMPLIFY indicates whether the result should be simplified
+
+*** 
+
+### mapply Examples
+
+For example, the following is tedious to type
+
+list(rep(1, 4), rep(2, 3), rep(3, 2), rep(4, 1))
+
+With mapply(), instead we can do
+
+```{r}
+mapply(rep, 1:3, 3:1)
+```
+
+*** 
+```{r}
+noise <- function(n, mean, sd) {
+       rnorm(n, mean, sd)
+}
+
+noise(5, 1, 2)
+mapply(noise, 1:3, 1:3, 2)
+```
+
+## Debugging
+
+R has a number of ways to indicate to you that something’s not right. There are different levels of indication that can be used, ranging from mere notification to fatal error. Executing any function in R may result in the following conditions.
+
+- message: A generic notification/diagnostic message produced by the message() function; execution of the function continues
+- warning: An indication that something is wrong but not necessarily fatal; execution of the function continues. Warnings are generated by the warning() function
+- error: An indication that a fatal problem has occurred and execution of the function stops. Errors are produced by the stop() function.
+- condition: A generic concept for indicating that something unexpected has occurred; programmers can create their own custom conditions if they want.
+
+## Debugging Tools
+
+R provides a number of tools to help you with debugging your code. The primary tools for debugging functions in R are
+
+- traceback(): prints out the function call stack after an error occurs; does nothing if there’s no error
+- debug(): flags a function for “debug” mode which allows you to step through execution of a function one line at a time
+- browser(): suspends the execution of a function wherever it is called and puts the function in debug mode
+trace(): allows you to insert debugging code into a function a specific places
+- recover(): allows you to modify the error behavior so that you can browse the function call stack
+
+## traceback
+
+The traceback() function prints out the function call stack after an error has occurred. The function call stack is the sequence of functions that was called before the error occurred.
+
+```{r, eval=FALSE}
+mean(x)
+traceback()
+```
+
+
+## debug
+
+The debug() function initiates an interactive debugger (also known as the “browser” in R) for a function. With the debugger, you can step through an R function one expression at a time to pinpoint exactly where an error occurs.
+
+## recovery
+
+The recover() function can be used to modify the error behavior of R when an error occurs. Normally, when an error occurs in a function, R will print out an error message, exit out of the function, and return you to your workspace to await further commands.
+
+With recover() you can tell R that when an error occurs, it should halt execution at the exact point at which the error occurred. That can give you the opportunity to poke around in the environment in which the error occurred. This can be useful to see if there are any R objects or data that have been corrupted or mistakenly modified.
+
+## Summary
+
+- There are three main indications of a problem/condition: message, warning, error; only an error is fatal
+- When analyzing a function with a problem, make sure you can reproduce the problem, - - clearly state your expectations and how the output differs from your expectation
+Interactive debugging tools traceback, debug, browser, trace, and recover can be used to find problematic code in functions
+- Debugging tools are not a substitute for thinking!
