@@ -1,0 +1,156 @@
+---
+title: "dplyr"
+author: "Rohit Jain"
+date: "11/6/2018"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The dplyr Package
+
+- The dplyr package does not provide any “new” functionality to R per se, in the sense that everything dplyr does could already be done with base R, but it greatly simplifies existing functionality in R.
+- One important contribution of the dplyr package is that it provides a “grammar” (in particular, verbs) for data manipulation and for operating on data frames.
+- the dplyr functions are very fast, as many key operations are coded in C++.
+
+## dplyr Grammar
+
+Some of the key “verbs” provided by the dplyr package are
+
+- select: return a subset of the columns of a data frame, using a flexible notation
+
+- filter: extract a subset of rows from a data frame based on logical conditions
+
+- arrange: reorder rows of a data frame
+
+- rename: rename variables in a data frame
+
+- mutate: add new variables/columns or transform existing variables
+
+- summarise / summarize: generate summary statistics of different variables in the data frame, possibly within strata
+
+- %>%: the “pipe” operator is used to connect multiple verb actions together into a pipeline
+
+
+## Common dplyr Function Properties
+
+All of the functions that we will discuss in this presentation will have a few common characteristics. In particular,
+
+- The first argument is a data frame.
+
+- The subsequent arguments describe what to do with the data frame specified in the first argument, and you can refer to columns in the data frame directly without using the $ operator (just use the column names).
+
+- The return result of a function is a new data frame
+
+- Data frames must be properly formatted and annotated for this to all be useful. In particular, the data must be tidy. In short, there should be one observation per row, and each column should represent a feature or characteristic of that observation.
+
+## 1. select()
+
+For the examples in this presentation i will be using a dataset containing air pollution and temperature data for the
+<a href="http://www.biostat.jhsph.edu/~rpeng/leanpub/rprog/chicago_data.zip">city of Chicago</a> in the U.S. The dataset is available at the given link.
+
+After unzipping the archive, you can load the data into R using the readRDS() function.
+
+```{r}
+chicago <- readRDS("chicago.rds")
+dim(chicago)
+```
+
+*** 
+
+Structure of the Dataframe:
+```{r, comment= "", message=FALSE}
+library("dplyr")
+str(chicago)
+```
+
+*** 
+
+- select() function can be used to select columns of a data frame that you want to focus on.
+- Suppose we wanted to take the first 3 columns only. There are a few ways to do this. We could for example use numerical indices. But we can also use the names directly.
+```{r}
+names(chicago)[1:3]
+subset <- select(chicago, city:dptp)
+head(subset)
+```
+
+## 2. filter()
+
+The filter() function is used to extract subsets of rows from a data frame. This function is similar to the existing subset() function in R but is quite a bit faster in my experience.
+
+Suppose we wanted to extract the rows of the chicago data frame where the levels of PM2.5 are greater than 30 (which is a reasonably high level), we could do
+```{r}
+chic.f <- filter(chicago, pm25tmean2 > 30)
+```
+
+*** 
+
+Structure of the filtered Data:
+```{r}
+str(chic.f)
+```
+
+## 3. arrange()
+
+The arrange() function is used to reorder rows of a data frame according to one of the variables/columns.
+```{r}
+chicago <- arrange(chicago, date)
+head(select(chicago, date, pm25tmean2), 3)
+tail(select(chicago, date, pm25tmean2), 3)
+```
+
+## 4. mutate()
+The mutate() function exists to compute transformations of variables in a data frame. 
+```{r}
+chicago <- mutate(chicago, pm25detrend = pm25tmean2 - mean(pm25tmean2, na.rm = TRUE))
+tail(chicago)
+```
+
+## 5. group_by()
+The group_by() function is used to generate summary statistics from the data frame within strata defined by a variable.
+In conjunction with the group_by() function we often use the summarize() function (or summarise()
+The general operation here is a combination of splitting a data frame into separate pieces defined by a variable or group of variables (group_by()), and then applying a summary function across those subsets (summarize()).
+
+First, we can create a year varible using as.POSIXlt().
+
+```{r}
+chicago <- mutate(chicago, year = as.POSIXlt(date)$year + 1900)
+```
+Now we can create a separate data frame that splits the original data frame by year.
+```{r}
+years <- group_by(chicago, year)
+```
+
+*** 
+Finally, we compute summary statistics for each year in the data frame with the summarize() function.
+```{r}
+summarize(years,
+          pm25tmean2 = mean(pm25tmean2, na.rm = TRUE),
+          o3 = max(o3tmean2, na.rm = TRUE),
+          no2 = median(no2tmean2, na.rm = TRUE)
+          )
+```
+
+##  6. %>%
+
+The pipeline operater %>% is very handy for stringing together multiple dplyr functions in a sequence of operations.
+
+- third(second(first(x)))
+
+This nesting is not a natural way to think about a sequence of operations. The %>% operator allows you to string operations in a left-to-right fashion, i.e.
+
+- first(x) %>% second %>% third
+
+## Summary
+
+The dplyr package provides a concise set of operations for managing data frames. With these functions we can do a number of complex operations in just a few lines of code.
+
+Once you learn the dplyr grammar there are a few additional benefits
+
+dplyr can be integrated with the data.table package for large fast tables
+
+The dplyr package is handy way to both simplify and speed up your data frame management code. It’s rare that you get such a combination at the same time!
+
+## Thank You!
